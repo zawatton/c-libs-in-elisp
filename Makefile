@@ -1,4 +1,4 @@
-# nelisp-cfront-showcase
+# c-libs-in-elisp
 #
 # Vars (override on the command line):
 #   CFRONT_ROOT  path to nelisp-cfront repo  (default ../nelisp-cfront)

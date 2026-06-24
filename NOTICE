@@ -1,5 +1,5 @@
-nelisp-cfront-showcase
-======================
+c-libs-in-elisp
+===============
 
 This repository demonstrates nelisp-cfront by compiling verbatim functions
 from third-party C sources.  Components carry different licenses:

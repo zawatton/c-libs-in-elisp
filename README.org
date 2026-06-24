@@ -1,4 +1,4 @@
-#+TITLE: nelisp-cfront-showcase
+#+TITLE: c-libs-in-elisp
 #+SUBTITLE: real SQLite (and, next, libxml2) C compiled to nelisp-compliant elisp / native
 
 A small, *honest* demonstration of [[https://github.com/zawatton/nelisp-cfront][nelisp-cfront]]: a compiler that turns
