@@ -1,0 +1,7 @@
+*.o
+*.elc
+prog
+prog-cfront
+prog-gcc
+/tmp/
+*~

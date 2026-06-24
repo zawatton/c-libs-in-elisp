@@ -1,0 +1,28 @@
+nelisp-cfront-showcase
+======================
+
+This repository demonstrates nelisp-cfront by compiling verbatim functions
+from third-party C sources.  Components carry different licenses:
+
+1. SQLite-derived material — PUBLIC DOMAIN
+   - sqlite/sqlite-subset.c : the function bodies (everything below the
+     "verbatim function bodies" marker) are copied UNMODIFIED from the SQLite
+     3.39.3 amalgamation (sqlite3.c).
+   - sqlite/sqlite-subset.pp.c : the preprocessed form of the above.
+   - sqlite/sqlite-subset.el : a mechanical translation of the above, emitted
+     by nelisp-cfront.
+   SQLite is in the public domain: https://www.sqlite.org/copyright.html
+   sha256(sqlite3.c, 3.39.3) =
+     e4e75433871863a69b47eb374772ff769d0ab5714997a2e2123a4941bc4c60a6
+   See sqlite/PROVENANCE.md for per-function source line numbers.
+
+2. Original showcase harness — GPL-3.0-or-later
+   Copyright (C) 2026 zawatton
+   - the typedef/macro preamble at the top of sqlite/sqlite-subset.c
+   - sqlite/driver.c
+   - scripts/*.sh
+   - Makefile, README.org, this NOTICE
+   This matches the license of nelisp-cfront and nelisp.
+
+nelisp-cfront and nelisp themselves are separate repositories and are not
+vendored here; the scripts locate them via CFRONT_ROOT / NELISP_ROOT.

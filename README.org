@@ -1,0 +1,86 @@
+#+TITLE: nelisp-cfront-showcase
+#+SUBTITLE: real SQLite (and, next, libxml2) C compiled to nelisp-compliant elisp / native
+
+A small, *honest* demonstration of [[https://github.com/zawatton/nelisp-cfront][nelisp-cfront]]: a compiler that turns
+ordinary C into *nelisp-compliant ~.el~* (the nelisp-cc grammar) and on to a
+native ~.o~ via nelisp's AOT backend.
+
+This repo takes *verbatim, unmodified* functions from the official **SQLite**
+amalgamation, runs them through nelisp-cfront, and proves the result behaves
+*byte-for-byte like the same code built with gcc*.
+
+* What is actually shown here
+
+A curated cluster of low-level SQLite routines — the varint codec, the
+big-endian 4-byte serializers, and the string-length helper — eight verbatim
+functions in total (see [[file:sqlite/PROVENANCE.md][sqlite/PROVENANCE.md]]):
+
+| function            | role                                   |
+|---------------------+----------------------------------------|
+| ~sqlite3PutVarint~  / ~putVarint64~     | LEB128 varint writer (u64)            |
+| ~sqlite3GetVarint~                      | full 9-byte varint reader (u64)       |
+| ~sqlite3GetVarint32~                    | 32-bit varint reader                  |
+| ~sqlite3VarintLen~                      | encoded length of a u64               |
+| ~sqlite3Get4byte~ / ~sqlite3Put4byte~   | big-endian 4-byte load/store (bswap)  |
+| ~sqlite3Strlen30~                       | 30-bit clamped strlen (libc call)     |
+
+Pipeline (see [[file:scripts/][scripts/]]):
+
+#+begin_example
+  sqlite/sqlite-subset.c        verbatim SQLite functions + a tiny typedef/macro preamble
+    -- gcc -E -P -->             (macro expansion only; cfront does not run cpp)
+  sqlite/sqlite-subset.pp.c
+    -- nelisp-cfront emit-el --> sqlite/sqlite-subset.el   <- the "elisp-ified" SQLite
+    -- nelisp-cfront AOT     --> subset.o (native, System V ABI)
+    -- cc link + run         --> output, compared against the gcc build
+#+end_example
+
+* Reproduce
+
+#+begin_src sh
+  make verify        # cfront .o vs gcc reference, byte-for-byte (the headline demo)
+  make regen         # regenerate sqlite-subset.pp.c and sqlite-subset.el from the .c
+  make check-verbatim SQLITE3_C=/path/to/sqlite3.c   # prove the bodies are unmodified
+#+end_src
+
+~make verify~ compiles ~sqlite-subset.pp.c~ both with nelisp-cfront (→ native
+~.o~) and with gcc, links each against ~sqlite/driver.c~, runs both, and
+asserts identical output (~ALL-OK~).  Layout assumed: this repo sits next to
+~nelisp-cfront/~ and ~nelisp/~ (override with ~CFRONT_ROOT~ / ~NELISP_ROOT~).
+
+* Scope — what this is, and what it is NOT
+
+*This is a showcase of the compiler, not a finished "SQLite in elisp".*
+
+- *Verified equivalent (runtime):* the eight functions above.  Their output
+  matches the gcc build byte-for-byte (~make verify~).  The function bodies are
+  verbatim SQLite (~make check-verbatim~).
+- *NOT a complete SQLite.*  Only this curated cluster is included.  Running
+  ~emit-el~ over the whole ~sqlite3.c~ amalgamation lowers most functions but
+  *skips* some (constructs nelisp-cfront cannot lower yet), so a whole-file
+  dump would be missing functionality and is *not* verified equivalent at
+  scale — it only proves "lowering succeeded", not "runtime-equivalent".
+- *Runtime depends on linking + the nelisp runtime's limits.*  ~extern~ calls
+  (e.g. ~strlen~, ~memcpy~) are resolved by the linker at build time — the
+  ~.el~ alone is not self-contained.  The nelisp runtime also has host-env
+  limitations (no real clock, no environment access, f64/ABI gaps, …); code
+  depending on those does not behave identically to native C.  The functions
+  chosen here deliberately avoid those dependencies, which is why they verify
+  cleanly.
+
+In short: the generated ~.el~ faithfully mirrors the C *logic of the functions
+that lower*, and the curated subset here is runtime-verified against gcc — but
+it is not a drop-in, feature-complete elisp SQLite.
+
+* Status
+
+- [X] SQLite — curated codec subset (this repo)
+- [ ] libxml2 — next (its preprocessing needs ~config.h~ + many headers)
+
+* License / provenance
+
+The SQLite function bodies and the mechanically-generated ~sqlite-subset.el~
+derive from SQLite, which is in the *public domain*
+(https://www.sqlite.org/copyright.html).  The original showcase harness
+(driver, scripts, Makefile, docs) is GPL-3.0-or-later, matching nelisp-cfront.
+See [[file:NOTICE][NOTICE]] and [[file:sqlite/PROVENANCE.md][sqlite/PROVENANCE.md]].
