@@ -7,11 +7,12 @@
 .PHONY: help verify regen check-verbatim
 
 help:
-	@echo "make verify         — compile the SQLite subset with nelisp-cfront AND gcc,"
-	@echo "                      link + run both, assert identical output (the demo)"
-	@echo "make regen          — regenerate sqlite-subset.pp.c and sqlite-subset.el"
+	@echo "make verify         — for each library (SQLite, libxml2) compile with"
+	@echo "                      nelisp-cfront AND gcc, link + run both, assert"
+	@echo "                      identical output (the demo)"
+	@echo "make regen          — regenerate the .pp.c (sqlite) and .el grammar (both)"
 	@echo "make check-verbatim SQLITE3_C=/path/to/sqlite3.c"
-	@echo "                    — prove the function bodies are verbatim upstream SQLite"
+	@echo "                    — prove the SQLite function bodies are verbatim upstream"
 
 verify:
 	@scripts/verify.sh

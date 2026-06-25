@@ -1,14 +1,18 @@
 c-libs-in-elisp — licensing summary
 ===================================
 
-This repository combines two kinds of material; see NOTICE for the
+This repository combines three kinds of material; see NOTICE for the
 file-by-file breakdown.
 
 1. SQLite-derived material is in the PUBLIC DOMAIN.
    (sqlite/sqlite-subset.c function bodies, sqlite-subset.pp.c,
     sqlite-subset.el — see https://www.sqlite.org/copyright.html)
 
-2. The original showcase harness is licensed GPL-3.0-or-later:
+2. libxml2-derived material is MIT-licensed.
+   (libxml2/xmlstring.c, xmlstring.pp.c, xmlstring.el —
+    see https://gitlab.gnome.org/GNOME/libxml2)
+
+3. The original showcase harness is licensed GPL-3.0-or-later:
 
    Copyright (C) 2026 zawatton
 

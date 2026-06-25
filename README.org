@@ -1,15 +1,17 @@
 #+TITLE: c-libs-in-elisp
-#+SUBTITLE: real SQLite (and, next, libxml2) C compiled to nelisp-compliant elisp / native
+#+SUBTITLE: real SQLite and libxml2 C compiled to nelisp-compliant elisp / native
 
 A small, *honest* demonstration of [[https://github.com/zawatton/nelisp-cfront][nelisp-cfront]]: a compiler that turns
 ordinary C into *nelisp-compliant ~.el~* (the nelisp-cc grammar) and on to a
 native ~.o~ via nelisp's AOT backend.
 
-This repo takes *verbatim, unmodified* functions from the official **SQLite**
-amalgamation, runs them through nelisp-cfront, and proves the result behaves
-*byte-for-byte like the same code built with gcc*.
+This repo takes *verbatim, unmodified* C from the official **SQLite** and
+**libxml2** sources, runs it through nelisp-cfront, and proves the result
+behaves *byte-for-byte like the same code built with gcc*.
 
-* What is actually shown here
+~make verify~ checks every library below.
+
+* SQLite — curated codec subset
 
 A curated cluster of low-level SQLite routines — the varint codec, the
 big-endian 4-byte serializers, and the string-length helper — eight verbatim
@@ -35,6 +37,26 @@ Pipeline (see [[file:scripts/][scripts/]]):
     -- cc link + run         --> output, compared against the gcc build
 #+end_example
 
+* libxml2 — the whole ~xmlstring.c~ translation unit
+
+Stronger than the SQLite subset: nelisp-cfront compiles the *entire*
+~xmlstring.c~ TU from libxml2 2.9.14 — all 37 string functions — verbatim
+(see [[file:libxml2/PROVENANCE.md][libxml2/PROVENANCE.md]]).  The driver exercises a representative set:
+~xmlStrlen~, ~xmlStrEqual~, ~xmlStrcmp~, ~xmlStrncmp~, ~xmlStrcasecmp~,
+~xmlStrchr~, ~xmlStrstr~, ~xmlUTF8Strlen~, and — notably — ~xmlStrPrintf~.
+
+~xmlStrPrintf~ is a real C-*variadic* function (~va_start~ → ~vsnprintf~ →
+~va_end~): nelisp-cfront compiles it natively through its SysV defined-varargs
+support (a register-save-area + ~va-list-init~), no stub, and it matches glibc
+byte-for-byte.
+
+After lowering, the object references only ~memcpy~ / ~vsnprintf~ (libc) and
+~xmlErrMemory~ (a no-op stub in the driver).  libxml2's allocator hooks
+(~xmlMalloc~ etc.) are emitted as zero-init bss, so the cfront object is
+self-contained; the *gcc reference* build links ~libxml2/alloc-stubs.c~ for
+them (the exercised functions don't allocate, so the compared output is
+unaffected).
+
 * Reproduce
 
 #+begin_src sh
@@ -43,23 +65,28 @@ Pipeline (see [[file:scripts/][scripts/]]):
   make check-verbatim SQLITE3_C=/path/to/sqlite3.c   # prove the bodies are unmodified
 #+end_src
 
-~make verify~ compiles ~sqlite-subset.pp.c~ both with nelisp-cfront (→ native
-~.o~) and with gcc, links each against ~sqlite/driver.c~, runs both, and
-asserts identical output (~ALL-OK~).  Layout assumed: this repo sits next to
-~nelisp-cfront/~ and ~nelisp/~ (override with ~CFRONT_ROOT~ / ~NELISP_ROOT~).
+For each library, ~make verify~ compiles the preprocessed C both with
+nelisp-cfront (→ native ~.o~) and with gcc, links each against that library's
+~driver.c~, runs both, and asserts identical output (~ALL-OK~).  Layout
+assumed: this repo sits next to ~nelisp-cfront/~ and ~nelisp/~ (override with
+~CFRONT_ROOT~ / ~NELISP_ROOT~).
 
 * Scope — what this is, and what it is NOT
 
-*This is a showcase of the compiler, not a finished "SQLite in elisp".*
+*This is a showcase of the compiler, not finished "SQLite/libxml2 in elisp".*
 
-- *Verified equivalent (runtime):* the eight functions above.  Their output
-  matches the gcc build byte-for-byte (~make verify~).  The function bodies are
-  verbatim SQLite (~make check-verbatim~).
-- *NOT a complete SQLite.*  Only this curated cluster is included.  Running
-  ~emit-el~ over the whole ~sqlite3.c~ amalgamation lowers most functions but
-  *skips* some (constructs nelisp-cfront cannot lower yet), so a whole-file
-  dump would be missing functionality and is *not* verified equivalent at
-  scale — it only proves "lowering succeeded", not "runtime-equivalent".
+- *Verified equivalent (runtime):* the SQLite functions above and the libxml2
+  functions the driver exercises.  Their output matches the gcc build
+  byte-for-byte (~make verify~).  The SQLite bodies are verbatim
+  (~make check-verbatim~); the whole ~xmlstring.c~ is vendored verbatim.
+- *Coverage differs by library.*  SQLite is a *curated subset* (eight
+  functions).  libxml2 is the *whole ~xmlstring.c~ TU* (all 37 functions lower
+  and link), of which the driver runtime-checks a representative set.
+- *Not a complete library.*  Running ~emit-el~ over a whole multi-file library
+  (e.g. the full ~sqlite3.c~ amalgamation) lowers most functions but *skips*
+  some (constructs nelisp-cfront cannot lower yet), so such a dump would be
+  missing functionality and is *not* verified equivalent at scale — it only
+  proves "lowering succeeded", not "runtime-equivalent".
 - *Runtime depends on linking + the nelisp runtime's limits.*  ~extern~ calls
   (e.g. ~strlen~, ~memcpy~) are resolved by the linker at build time — the
   ~.el~ alone is not self-contained.  The nelisp runtime also has host-env
@@ -69,18 +96,19 @@ asserts identical output (~ALL-OK~).  Layout assumed: this repo sits next to
   cleanly.
 
 In short: the generated ~.el~ faithfully mirrors the C *logic of the functions
-that lower*, and the curated subset here is runtime-verified against gcc — but
-it is not a drop-in, feature-complete elisp SQLite.
+that lower*, and the demos here are runtime-verified against gcc — but this is
+not a drop-in, feature-complete elisp SQLite/libxml2.
 
 * Status
 
-- [X] SQLite — curated codec subset (this repo)
-- [ ] libxml2 — next (its preprocessing needs ~config.h~ + many headers)
+- [X] SQLite — curated codec subset
+- [X] libxml2 — whole ~xmlstring.c~ TU (incl. the variadic ~xmlStrPrintf~)
 
 * License / provenance
 
-The SQLite function bodies and the mechanically-generated ~sqlite-subset.el~
-derive from SQLite, which is in the *public domain*
-(https://www.sqlite.org/copyright.html).  The original showcase harness
-(driver, scripts, Makefile, docs) is GPL-3.0-or-later, matching nelisp-cfront.
-See [[file:NOTICE][NOTICE]] and [[file:sqlite/PROVENANCE.md][sqlite/PROVENANCE.md]].
+The SQLite material (function bodies + ~sqlite-subset.el~) derives from SQLite,
+which is in the *public domain* (https://www.sqlite.org/copyright.html).  The
+libxml2 material (~xmlstring.c~ + ~xmlstring.el~) derives from libxml2, which is
+*MIT*-licensed (https://gitlab.gnome.org/GNOME/libxml2).  The original showcase
+harness (drivers, scripts, Makefile, docs) is GPL-3.0-or-later, matching
+nelisp-cfront.  See [[file:NOTICE][NOTICE]] and each library's ~PROVENANCE.md~.

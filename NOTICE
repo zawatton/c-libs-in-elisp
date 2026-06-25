@@ -16,10 +16,20 @@ from third-party C sources.  Components carry different licenses:
      e4e75433871863a69b47eb374772ff769d0ab5714997a2e2123a4941bc4c60a6
    See sqlite/PROVENANCE.md for per-function source line numbers.
 
-2. Original showcase harness — GPL-3.0-or-later
+2. libxml2-derived material — MIT
+   - libxml2/xmlstring.c : the whole translation unit, copied UNMODIFIED from
+     libxml2 2.9.14 (Debian 2.12.7+dfsg+really2.9.14).
+   - libxml2/xmlstring.pp.c : its preprocessed form (see libxml2/PROVENANCE.md
+     for the exact command).
+   - libxml2/xmlstring.el : a mechanical translation of the above, emitted by
+     nelisp-cfront.
+   libxml2 is MIT-licensed: https://gitlab.gnome.org/GNOME/libxml2
+   See libxml2/PROVENANCE.md for version / sha256 / externs.
+
+3. Original showcase harness — GPL-3.0-or-later
    Copyright (C) 2026 zawatton
    - the typedef/macro preamble at the top of sqlite/sqlite-subset.c
-   - sqlite/driver.c
+   - sqlite/driver.c, libxml2/driver.c, libxml2/alloc-stubs.c
    - scripts/*.sh
    - Makefile, README.org, this NOTICE
    This matches the license of nelisp-cfront and nelisp.
